@@ -1,13 +1,14 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "ESNext",
+    "moduleResolution": "node",
     "lib": [
       "es2022",
       "dom",
       "dom.iterable"
     ],
+    "jsx": "react-jsx",
     "declaration": true,
     "strict": true,
     "noImplicitAny": true,
@@ -21,17 +22,20 @@
     "inlineSourceMap": true,
     "inlineSources": true,
     "experimentalDecorators": true,
-    "jsx": "react-jsx",
     "strictPropertyInitialization": false,
-    "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
     "typeRoots": [
-      "./node_modules/@types"
+      "../../node_modules/@types"
     ]
   },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx"
+  ],
   "exclude": [
-    "node_modules",
-    "cdk.out"
+    "node_modules"
   ]
 }
