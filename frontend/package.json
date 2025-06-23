@@ -6,11 +6,13 @@
     "@aws-amplify/ui-react": "^4.0.0",
     "aws-amplify": "^5.0.0",
     "axios": "^1.10.0",
+    "canvas-confetti": "^1.9.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.10.0",
     "react-scripts": "5.0.1",
-    "styled-components": "^5.3.9"
+    "styled-components": "^5.3.11",
+    "use-sound": "^5.0.0"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -35,5 +37,9 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/styled-components": "^5.1.34"
   }
 }

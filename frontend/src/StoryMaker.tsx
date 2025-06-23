@@ -1,4 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
+import styled from 'styled-components';
+import { FloatingStars, CharacterIllustration } from './components/MagicalEffects';
+import useSound from 'use-sound';
+import confetti from 'canvas-confetti';
 import axios from 'axios';
 
 interface StoryData {
@@ -49,13 +53,28 @@ const StoryMaker: React.FC = () => {
     setStoryData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleTileSelect = (field: 'theme' | 'length', value: string) => {
+    setStoryData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const [playWoosh] = useSound('/sounds/woosh.mp3');
+  const [playSuccess] = useSound('/sounds/success.mp3');
+
   const generateStory = async () => {
+    playWoosh();
     setIsGenerating(true);
     setError('');
     
     try {
       const response = await api.post('/story', storyData);
       const storyId = response.data.storyId;
+      
+      // Trigger confetti
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
       
       pollMetadata(storyId);
     } catch (err) {
@@ -238,13 +257,104 @@ const StoryMaker: React.FC = () => {
     }
   };
 
+  const ThemeTile = styled.div<{ selected: boolean }>`
+    padding: 10px 20px;
+    font-size: 1rem;
+    border: 2px solid #8a2be2;
+    border-radius: 20px;
+    cursor: pointer;
+    background: ${props => props.selected ? '#8a2be2' : '#fff'};
+    color: ${props => props.selected ? '#fff' : '#8a2be2'};
+    font-weight: bold;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    transform: ${props => props.selected ? 'scale(1.05)' : 'scale(1)'};
+    
+    &:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    }
+  `;
+
+  const LengthOption = styled.div<{ selected: boolean }>`
+    padding: 10px 20px;
+    font-size: 1rem;
+    border: 2px solid #8a2be2;
+    border-radius: 20px;
+    cursor: pointer;
+    background: ${props => props.selected ? '#8a2be2' : '#fff'};
+    color: ${props => props.selected ? '#fff' : '#8a2be2'};
+    font-weight: bold;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    transform: ${props => props.selected ? 'scale(1.05)' : 'scale(1)'};
+    
+    &:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    }
+  `;
+
+  const GenerateButton = styled.button`
+    background: linear-gradient(135deg, #8a2be2 0%, #ff00ff 100%);
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 30px;
+    cursor: pointer;
+    font-size: 1.2rem;
+    font-weight: bold;
+    box-shadow: 0 6px 12px rgba(138, 43, 226, 0.3);
+    display: block;
+    margin: 30px auto;
+    transition: all 0.3s ease;
+    transform: scale(1);
+    
+    &:hover {
+      transform: scale(1.05);
+      box-shadow: 0 8px 16px rgba(138, 43, 226, 0.4);
+    }
+    
+    &:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      transform: scale(1);
+    }
+  `;
+
   return (
-    <div className="story-maker" style={{ background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)' }}>
-      <h1 style={{ color: '#ff6b6b', fontFamily: '"Comic Sans MS", cursive, sans-serif' }}>✨ Magic Story Maker ✨</h1>
+    <div className="story-maker" style={{ 
+      background: 'linear-gradient(135deg, #f6e6ff 0%, #c8f2ff 100%)',
+      minHeight: '100vh',
+      padding: '20px',
+      position: 'relative',
+      overflow: 'hidden'
+    }}>
+      <FloatingStars count={50} />
+      <CharacterIllustration />
+      <h1 style={{ 
+        color: '#8a2be2', 
+        fontFamily: '"Luckiest Guy", cursive, sans-serif',
+        fontSize: '3rem',
+        textAlign: 'center',
+        margin: '20px 0 40px',
+        textShadow: '3px 3px 0 #ffd700',
+        letterSpacing: '1px'
+      }}>
+        <span style={{ color: '#ff69b4' }}>✨</span> Magic Story Maker <span style={{ color: '#ff69b4' }}>✨</span>
+      </h1>
       
       {!isGenerating && !metadata && (
         <div className="story-form" style={{ background: 'white', borderRadius: '20px', padding: '25px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
-          <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
+          <div style={{ 
+            display: 'flex', 
+            gap: '20px', 
+            marginBottom: '20px',
+            background: 'rgba(255,255,255,0.8)',
+            padding: '20px',
+            borderRadius: '20px',
+            boxShadow: '0 4px 15px rgba(0,0,0,0.1)'
+          }}>
             <div className="form-group" style={{ flex: 1 }}>
               <label style={{ fontSize: '18px', fontWeight: 'bold', color: '#333' }}>Child's name:</label>
               <input 
@@ -285,24 +395,13 @@ const StoryMaker: React.FC = () => {
             <label style={{ fontSize: '18px', fontWeight: 'bold', color: '#333' }}>Theme of the story:</label>
             <div className="tiles-container" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '10px' }}>
               {['Forest', 'Fantasy', 'Adventure', 'Space'].map(theme => (
-                <button
-                  key={theme}
-                  onClick={() => setStoryData(prev => ({ ...prev, theme: theme.toLowerCase() }))}
-                  style={{
-                    padding: '10px 20px',
-                    fontSize: '16px',
-                    border: '2px solid',
-                    borderColor: storyData.theme === theme.toLowerCase() ? '#ff758c' : '#ccc',
-                    borderRadius: '50px',
-                    cursor: 'pointer',
-                    background: storyData.theme === theme.toLowerCase() ? '#fff0f0' : 'white',
-                    color: '#333',
-                    fontWeight: 'bold',
-                    transition: 'all 0.3s ease'
-                  }}
+                <ThemeTile 
+                  key={theme} 
+                  selected={storyData.theme === theme.toLowerCase()}
+                  onClick={() => handleTileSelect('theme', theme.toLowerCase())}
                 >
                   {theme}
-                </button>
+                </ThemeTile>
               ))}
             </div>
             <input 
@@ -330,47 +429,23 @@ const StoryMaker: React.FC = () => {
                 { value: 'medium', label: 'Medium' },
                 { value: 'long', label: 'Long' }
               ].map(lengthOption => (
-                <button
+                <LengthOption
                   key={lengthOption.value}
-                  onClick={() => setStoryData(prev => ({ ...prev, length: lengthOption.value }))}
-                  style={{
-                    padding: '10px 20px',
-                    fontSize: '16px',
-                    border: '2px solid',
-                    borderColor: storyData.length === lengthOption.value ? '#ff758c' : '#ccc',
-                    borderRadius: '50px',
-                    cursor: 'pointer',
-                    background: storyData.length === lengthOption.value ? '#fff0f0' : 'white',
-                    color: '#333',
-                    fontWeight: 'bold',
-                    transition: 'all 0.3s ease'
-                  }}
+                  selected={storyData.length === lengthOption.value}
+                  onClick={() => handleTileSelect('length', lengthOption.value)}
                 >
                   {lengthOption.label}
-                </button>
+                </LengthOption>
               ))}
             </div>
           </div>
           
-          <button 
+          <GenerateButton 
             onClick={generateStory} 
             disabled={!(storyData.childName && storyData.age && storyData.theme && storyData.length)}
-            style={{
-              background: 'linear-gradient(to right, #ff758c, #ff7eb3)',
-              color: 'white',
-              border: 'none',
-              padding: '12px 25px',
-              borderRadius: '50px',
-              cursor: 'pointer',
-              fontSize: '18px',
-              fontWeight: 'bold',
-              boxShadow: '0 4px 8px rgba(255, 117, 140, 0.3)',
-              transition: 'all 0.3s ease',
-              marginTop: '20px'
-            }}
           >
             🎩 Make My Story!
-          </button>
+          </GenerateButton>
         </div>
       )}
       
