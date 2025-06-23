@@ -18,6 +18,10 @@ The Story Teller App is a React-based application designed to create and share b
 ![Story page](img/story.jpg)
 </details>
 
+## Architecture diagram 
+
+![Architecture diagram](img/diagram.png)
+
 ## Setup Instructions
 
 ### Prerequisites
