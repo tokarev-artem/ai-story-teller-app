@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
 interface StoryData {
@@ -40,6 +40,9 @@ const StoryMaker: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [metadata, setMetadata] = useState<StoryMetadata | null>(null);
   const [error, setError] = useState('');
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const metadataRef = useRef(metadata);
+  metadataRef.current = metadata;
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -102,113 +105,112 @@ const StoryMaker: React.FC = () => {
         console.error('Error response status:', err.response.status);
       }
       setError('Failed to get presigned URL');
-      return s3Url; // Return original URL on error
+      return s3Url;
     }
   };
 
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
+
   const pollMetadata = async (storyId: string) => {
     let attempts = 0;
-    const maxAttempts = 60; // 10 minutes at 10 second intervals
-    
-    console.log(`Starting to poll metadata for story ID: ${storyId}`);
-    
-    const interval = setInterval(async () => {
+    const maxAttempts = 60;
+
+    const poll = async () => {
+      const currentMetadata = metadataRef.current;
+
+      if (currentMetadata?.storyText && currentMetadata?.audioUrl && currentMetadata?.imageUrl) {
+        console.log('All content loaded, stopping polling.');
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        return;
+      }
+
+      if (attempts >= maxAttempts) {
+        console.log('Polling timed out.');
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        setError('Story generation timed out');
+        setIsGenerating(false);
+        return;
+      }
+      attempts++;
+
       try {
-        console.log(`Polling attempt ${attempts + 1} for story ID: ${storyId}`);
+        console.log(`Polling attempt ${attempts} for story ID: ${storyId}`);
         const response = await api.get(`/metadata/${storyId}`);
         const data = response.data;
-        console.log('Received metadata:', JSON.stringify(data, null, 2));
-        
-        // Process S3 URLs for audio and image if available
-        const processedData: StoryMetadata = { ...data };
-        
-        // Fetch story text if available
-        if (data.textUrl) {
-          console.log(`Fetching story text from: ${data.textUrl}`);
-          const storyText = await fetchStoryText(data.textUrl);
-          if (storyText) {
-            processedData.storyText = storyText;
-          }
-        }
-        
-        // Extract bucket name from textUrl if available
+
+        let needsUpdate = false;
+        const newMetadata = { ...currentMetadata, ...data };
+
+        const textUrl = data.textUrl;
         let bucketName = '';
-        if (data.textUrl && data.textUrl.startsWith('s3://')) {
-          const textUrlParts = data.textUrl.replace('s3://', '').split('/');
-          bucketName = textUrlParts[0];
-          console.log(`Extracted bucket name: ${bucketName} from textUrl: ${data.textUrl}`);
-        } else {
-          console.warn('No textUrl found or textUrl does not start with s3://');
+        if (textUrl && textUrl.startsWith('s3://')) {
+          bucketName = textUrl.replace('s3://', '').split('/')[0];
         }
-        
-        // Get presigned URLs for audio when status is complete
-        if (data.audioStatus === 'complete') {
-          console.log(`Audio status is complete for story ID: ${storyId}`);
-          if (bucketName) {
-            // Construct the audio URL using the known pattern
-            const audioUrl = `s3://${bucketName}/stories/${storyId}/audio.mp3`;
-            console.log('Constructed audio URL:', audioUrl);
-            try {
-              console.log('Getting presigned URL for audio...');
-              const presignedAudioUrl = await getPresignedUrl(audioUrl);
-              console.log('Received presigned audio URL:', presignedAudioUrl);
-              processedData.audioUrl = presignedAudioUrl;
-            } catch (e) {
-              console.error('Error getting presigned audio URL:', e);
-            }
-          } else {
-            console.error('Cannot construct audio URL: bucket name is empty');
-          }
-        } else {
-          console.log(`Audio status is not complete: ${data.audioStatus}`);
+
+        const promises = [];
+
+        if (textUrl && !newMetadata.storyText) {
+          promises.push(
+            fetchStoryText(textUrl).then(text => {
+              if (text) {
+                newMetadata.storyText = text;
+                needsUpdate = true;
+              }
+            })
+          );
         }
-        
-        // Get presigned URLs for image when status is complete
-        if (data.imageStatus === 'complete') {
-          console.log(`Image status is complete for story ID: ${storyId}`);
-          if (bucketName) {
-            // Construct the image URL using the known pattern
-            const imageUrl = `s3://${bucketName}/stories/${storyId}/cover.png`;
-            console.log('Constructed image URL:', imageUrl);
-            try {
-              console.log('Getting presigned URL for image...');
-              const presignedImageUrl = await getPresignedUrl(imageUrl);
-              console.log('Received presigned image URL:', presignedImageUrl);
-              processedData.imageUrl = presignedImageUrl;
-            } catch (e) {
-              console.error('Error getting presigned image URL:', e);
-            }
-          } else {
-            console.error('Cannot construct image URL: bucket name is empty');
-          }
-        } else {
-          console.log(`Image status is not complete: ${data.imageStatus}`);
+
+        if (bucketName && data.audioStatus === 'complete' && !newMetadata.audioUrl) {
+          const audioS3Url = `s3://${bucketName}/stories/${storyId}/audio.mp3`;
+          promises.push(
+            getPresignedUrl(audioS3Url).then(url => {
+              if (url !== audioS3Url) {
+                newMetadata.audioUrl = url;
+                needsUpdate = true;
+              }
+            })
+          );
         }
-        
-        // Update metadata state
-        setMetadata(processedData);
-        
-        // Check if story generation is complete
-        if (data.status === 'complete' && 
-            data.audioStatus === 'complete' && 
-            data.imageStatus === 'complete') {
-          clearInterval(interval);
-          setIsGenerating(false);
+
+        if (bucketName && data.imageStatus === 'complete' && !newMetadata.imageUrl) {
+          const imageS3Url = `s3://${bucketName}/stories/${storyId}/cover.png`;
+          promises.push(
+            getPresignedUrl(imageS3Url).then(url => {
+              if (url !== imageS3Url) {
+                newMetadata.imageUrl = url;
+                needsUpdate = true;
+              }
+            })
+          );
         }
-        
-        attempts++;
-        if (attempts >= maxAttempts) {
-          clearInterval(interval);
-          setIsGenerating(false);
-          setError('Story generation timed out');
+
+        await Promise.all(promises);
+
+        if (needsUpdate) {
+          setMetadata(newMetadata);
         }
+
+        // Final check to stop polling
+        if (newMetadata.storyText && newMetadata.audioUrl && newMetadata.imageUrl) {
+          console.log('All content now loaded, stopping polling for good.');
+          if (intervalRef.current) clearInterval(intervalRef.current);
+        }
+
       } catch (err) {
-        console.error('Error polling metadata:', err);
-        clearInterval(interval);
-        setIsGenerating(false);
-        setError('Error fetching story status');
+        console.error('Error during polling:', err);
+        setError('An error occurred while fetching story status.');
+        if (intervalRef.current) clearInterval(intervalRef.current);
       }
-    }, 3000); // Poll every 3 seconds
+    };
+
+    intervalRef.current = setInterval(poll, 3000);
+    poll(); // Initial poll right away
   };
 
   const fetchStoryText = async (url: string): Promise<string | null> => {
