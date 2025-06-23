@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@aws-cdk/aws-lambda-nodejs": "^1.203.0",
+    "@aws-sdk/client-apigatewayv2": "^3.830.0",
     "@aws-sdk/client-bedrock-runtime": "^3.830.0",
     "@aws-sdk/client-dynamodb": "^3.830.0",
     "@aws-sdk/client-polly": "^3.830.0",

@@ -3,7 +3,8 @@ import { Construct } from 'constructs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as nodejs from 'aws-cdk-lib/aws-lambda-nodejs';
-import * as apigateway from 'aws-cdk-lib/aws-apigateway';
+import * as apigatewayv2 from 'aws-cdk-lib/aws-apigatewayv2';
+import * as apigatewayv2integrations from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
@@ -151,20 +152,6 @@ export class StoryTellerAppStack extends cdk.Stack {
     storyTable.grantReadData(storyMetadataLambda);
     presignedUrlLambda.grantInvoke(storyMetadataLambda);
 
-    const backendApi = new apigateway.RestApi(this, 'BackendApi', {
-      defaultCorsPreflightOptions: {
-        allowOrigins: apigateway.Cors.ALL_ORIGINS,
-        allowMethods: apigateway.Cors.ALL_METHODS,
-        allowHeaders: ['Content-Type', 'Authorization'],
-      },
-    });
-
-    backendApi.root.addResource('story').addMethod('POST', new apigateway.LambdaIntegration(storyGeneratorLambda));
-    backendApi.root.addResource('url').addMethod('POST', new apigateway.LambdaIntegration(presignedUrlLambda));
-    const metadataRes = backendApi.root.addResource('metadata');
-    metadataRes.addMethod('GET', new apigateway.LambdaIntegration(storyMetadataLambda));
-    metadataRes.addResource('{storyId}').addMethod('GET', new apigateway.LambdaIntegration(storyMetadataLambda));
-
     const frontendBucket = new s3.Bucket(this, 'FrontendBucket', {
       publicReadAccess: false,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
@@ -195,6 +182,68 @@ export class StoryTellerAppStack extends cdk.Stack {
       ],
     });
 
+    const backendApi = new apigatewayv2.HttpApi(this, 'BackendApiGw', {
+      corsPreflight: {
+        allowOrigins: [
+          'https://' + distribution.distributionDomainName,
+          'http://localhost:3000'
+        ],
+        allowMethods: [
+          apigatewayv2.CorsHttpMethod.GET,
+          apigatewayv2.CorsHttpMethod.POST,
+          apigatewayv2.CorsHttpMethod.OPTIONS
+        ],
+        allowHeaders: ['Content-Type', 'Authorization'],
+        maxAge: cdk.Duration.days(1),
+      },
+    });
+
+    backendApi.addRoutes({
+      path: '/story',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: new apigatewayv2integrations.HttpLambdaIntegration('StoryGeneratorIntegration', storyGeneratorLambda),
+    });
+    backendApi.addRoutes({
+      path: '/url',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: new apigatewayv2integrations.HttpLambdaIntegration('PresignedUrlIntegration', presignedUrlLambda),
+    });
+    backendApi.addRoutes({
+      path: '/metadata',
+      methods: [apigatewayv2.HttpMethod.GET],
+      integration: new apigatewayv2integrations.HttpLambdaIntegration('StoryMetadataIntegration', storyMetadataLambda),
+    });
+    backendApi.addRoutes({
+      path: '/metadata/{storyId}',
+      methods: [apigatewayv2.HttpMethod.GET],
+      integration: new apigatewayv2integrations.HttpLambdaIntegration('StoryMetadataIdIntegration', storyMetadataLambda),
+    });
+
+    ['/story', '/url', '/metadata', '/metadata/{storyId}'].forEach(path => {
+      backendApi.addRoutes({
+        path,
+        methods: [apigatewayv2.HttpMethod.OPTIONS],
+        integration: new apigatewayv2integrations.HttpLambdaIntegration(
+          `${path.replace(/\//g, '')}OptionsIntegration`,
+          new lambda.Function(this, `${path.replace(/\//g, '')}OptionsFunction`, {
+            runtime: lambda.Runtime.NODEJS_18_X,
+            handler: 'index.handler',
+            code: lambda.Code.fromInline(`
+              exports.handler = async (event) => {
+                return {
+                  statusCode: 204,
+                  headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type,Authorization'
+                  }
+                };
+              };
+            `)
+          })
+        )
+      });
+    });
     new s3deploy.BucketDeployment(this, 'DeployFrontend', {
       sources: [s3deploy.Source.asset(path.join(__dirname, '../frontend/build'))],
       destinationBucket: frontendBucket,
@@ -209,6 +258,10 @@ export class StoryTellerAppStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'StorageBucketName', {
       value: storageBucket.bucketName,
       description: 'Name of the S3 bucket for storing stories',
+    });
+    new cdk.CfnOutput(this, 'BackendApiUrl', {
+      value: backendApi.apiEndpoint,
+      description: 'URL of the backend API',
     });
   }
 }

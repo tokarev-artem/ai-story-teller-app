@@ -24,6 +24,9 @@ The Story Teller App is a React-based application designed to create and share b
 - Node.js and npm for frontend and CDK deployment.
 - AWS CLI configured with appropriate credentials.
 - AWS CDK installed (see installation steps below).
+- AWS Bedrock model IDs for text and image generation:
+  - `anthropic.claude-3-haiku-20240307-v1:0`
+  - `amazon.titan-image-generator-v2:0`
 
 #### Installing AWS CDK
 1. **Install Node.js and npm**:
