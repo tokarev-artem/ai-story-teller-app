@@ -52,7 +52,7 @@ The Story Teller App is a React-based application designed to create and share b
    ```bash
    aws configure
    ```
-   Enter your Access Key ID, Secret Access Key, region, and output format as prompted.
+   Enter your Access Key ID, Secret Access Key, region (tested only in us-east-1, since bedrock models are in us-east-1), and output format as prompted.
 
    Or just export your Access Key ID, Secret Access Key and Session token (if exists)
 
@@ -60,12 +60,13 @@ The Story Teller App is a React-based application designed to create and share b
    export AWS_ACCESS_KEY_ID="ABCDEF"
    export AWS_SECRET_ACCESS_KEY="ABCDEF"
    export AWS_SESSION_TOKEN="ABCDEF"
+   export AWS_REGION="us-east-1"
    ```
 ### Installation and Deployment
 1. **Clone the Repository**:
    ```bash
-   git clone <repository-url>
-   cd ai-story-teller-app
+   git clone https://github.com/tokarev-artem/story-teller-app.git
+   cd story-teller-app
    ```
 2. **Install Dependencies**:
    - For the backend (CDK and Lambdas):
