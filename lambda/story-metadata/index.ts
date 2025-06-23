@@ -15,22 +15,36 @@ const presignedUrlFunctionName = process.env.PRESIGNED_URL_FUNCTION_NAME || 'pre
 // Function to get presigned URL by invoking the presigned-url Lambda
 async function getPresignedUrl(s3Uri: string, operation: 'get' | 'put'): Promise<string> {
   const lambdaClient = new LambdaClient({ region: process.env.REGION || 'us-east-1' });
+  
+  // Parse the S3 URI to extract the key
+  // Format: s3://bucket-name/path/to/file
+  const s3Parts = s3Uri.replace('s3://', '').split('/');
+  // Skip the bucket name as we use the environment variable in the presigned-url Lambda
+  const key = s3Parts.slice(1).join('/');
+  
+  console.log(`Parsed s3Uri ${s3Uri} to key ${key}`);
+  
   const payload = {
-    s3Uri,
+    key,
     operation,
-    expiresIn: 3600 // URL expires in 1 hour
+    // No need to specify contentType for 'get' operations
   };
+  
   const command = new InvokeCommand({
     FunctionName: process.env.PRESIGNED_URL_FUNCTION_NAME,
     InvocationType: 'RequestResponse',
     Payload: JSON.stringify(payload)
   });
+  
   const response = await lambdaClient.send(command);
   const responsePayload = JSON.parse(Buffer.from(response.Payload).toString());
+  
   if (response.FunctionError) {
     throw new Error(`Error invoking presigned-url Lambda: ${response.FunctionError} - ${JSON.stringify(responsePayload)}`);
   }
-  return responsePayload.presignedUrl;
+  
+  console.log('Presigned URL response payload:', responsePayload);
+  return responsePayload.url; // Changed from presignedUrl to url to match the response format
 }
 
 // Function to enhance story with presigned URLs
@@ -41,10 +55,14 @@ async function enhanceStoryWithPresignedUrls(story: any): Promise<any> {
     if (story.audioUrl && story.audioUrl.startsWith('s3://')) {
       console.log(`Generating presigned URL for audio: ${story.audioUrl}`);
       enhancedStory.audioUrl = await getPresignedUrl(story.audioUrl, 'get');
+    } else if (story.audioStatus === 'complete') {
+      console.warn(`audioStatus is complete, but audioUrl is missing or not an S3 URI in DynamoDB record for story ID: ${story.id}`);
     }
     if (story.imageUrl && story.imageUrl.startsWith('s3://')) {
       console.log(`Generating presigned URL for image: ${story.imageUrl}`);
       enhancedStory.imageUrl = await getPresignedUrl(story.imageUrl, 'get');
+    } else if (story.imageStatus === 'complete') {
+      console.warn(`imageStatus is complete, but imageUrl is missing or not an S3 URI in DynamoDB record for story ID: ${story.id}`);
     }
   } catch (error) {
     console.error('Error enhancing story with presigned URLs:', error);

@@ -23,7 +23,18 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     }
 
     const requestBody = JSON.parse(event.body);
-    const { key, operation, contentType } = requestBody;
+    let { key, operation, contentType, objectUrl } = requestBody;
+
+    // Handle both formats for backward compatibility
+    if (objectUrl && objectUrl.startsWith('s3://')) {
+      // Parse the S3 URL to extract the key
+      // Format: s3://bucket-name/path/to/file
+      const s3Parts = objectUrl.replace('s3://', '').split('/');
+      // Skip the bucket name as we use the environment variable
+      key = s3Parts.slice(1).join('/');
+      operation = operation || 'get'; // Default to 'get' operation
+      console.log(`Parsed objectUrl ${objectUrl} to key ${key}`);
+    }
 
     if (!key || !operation) {
       return {
