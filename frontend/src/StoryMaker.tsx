@@ -244,79 +244,112 @@ const StoryMaker: React.FC = () => {
       
       {!isGenerating && !metadata && (
         <div className="story-form" style={{ background: 'white', borderRadius: '20px', padding: '25px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
-          <div className="form-group" style={{ marginBottom: '20px' }}>
-            <label style={{ fontSize: '18px', fontWeight: 'bold', color: '#333' }}>Child's name:</label>
-            <input 
-              type="text" 
-              name="childName" 
-              value={storyData.childName} 
-              onChange={handleInputChange} 
-              placeholder="John"
-              style={{
-                width: '100%',
-                padding: '10px',
-                fontSize: '18px',
-                border: '1px solid #ccc',
-                borderRadius: '5px'
-              }}
-            />
+          <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
+            <div className="form-group" style={{ flex: 1 }}>
+              <label style={{ fontSize: '18px', fontWeight: 'bold', color: '#333' }}>Child's name:</label>
+              <input 
+                type="text" 
+                name="childName" 
+                value={storyData.childName} 
+                onChange={handleInputChange} 
+                placeholder="John"
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  fontSize: '18px',
+                  border: '1px solid #ccc',
+                  borderRadius: '5px'
+                }}
+              />
+            </div>
+            <div className="form-group" style={{ flex: 1 }}>
+              <label style={{ fontSize: '18px', fontWeight: 'bold', color: '#333' }}>Age:</label>
+              <input 
+                type="text" 
+                name="age" 
+                value={storyData.age} 
+                onChange={handleInputChange} 
+                placeholder="5"
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  fontSize: '18px',
+                  border: '1px solid #ccc',
+                  borderRadius: '5px'
+                }}
+              />
+            </div>
           </div>
-          
-          <div className="form-group" style={{ marginBottom: '20px' }}>
-            <label style={{ fontSize: '18px', fontWeight: 'bold', color: '#333' }}>How old is the main person?</label>
-            <input 
-              type="text" 
-              name="age" 
-              value={storyData.age} 
-              onChange={handleInputChange} 
-              placeholder="5 years old"
-              style={{
-                width: '100%',
-                padding: '10px',
-                fontSize: '18px',
-                border: '1px solid #ccc',
-                borderRadius: '5px'
-              }}
-            />
-          </div>
-          
+
           <div className="form-group" style={{ marginBottom: '20px' }}>
             <label style={{ fontSize: '18px', fontWeight: 'bold', color: '#333' }}>Theme of the story:</label>
+            <div className="tiles-container" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '10px' }}>
+              {['Forest', 'Fantasy', 'Adventure', 'Space'].map(theme => (
+                <button
+                  key={theme}
+                  onClick={() => setStoryData(prev => ({ ...prev, theme: theme.toLowerCase() }))}
+                  style={{
+                    padding: '10px 20px',
+                    fontSize: '16px',
+                    border: '2px solid',
+                    borderColor: storyData.theme === theme.toLowerCase() ? '#ff758c' : '#ccc',
+                    borderRadius: '50px',
+                    cursor: 'pointer',
+                    background: storyData.theme === theme.toLowerCase() ? '#fff0f0' : 'white',
+                    color: '#333',
+                    fontWeight: 'bold',
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  {theme}
+                </button>
+              ))}
+            </div>
             <input 
               type="text" 
               name="theme" 
               value={storyData.theme} 
               onChange={handleInputChange} 
-              placeholder="Adventure"
+              placeholder="Or type your own theme"
               style={{
                 width: '100%',
                 padding: '10px',
                 fontSize: '18px',
                 border: '1px solid #ccc',
-                borderRadius: '5px'
+                borderRadius: '5px',
+                marginTop: '10px'
               }}
             />
           </div>
           
           <div className="form-group" style={{ marginBottom: '20px' }}>
             <label style={{ fontSize: '18px', fontWeight: 'bold', color: '#333' }}>How long should the story be?</label>
-            <select 
-              name="length" 
-              value={storyData.length} 
-              onChange={handleInputChange}
-              style={{
-                width: '100%',
-                padding: '10px',
-                fontSize: '18px',
-                border: '1px solid #ccc',
-                borderRadius: '5px'
-              }}
-            >
-              <option value="">Select length</option>
-              <option value="short">Short (1-2 minutes)</option>
-              <option value="medium">Medium (3-5 minutes)</option>
-              <option value="long">Long (5+ minutes)</option>
-            </select>
+            <div className="tiles-container" style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+              {[
+                { value: 'short', label: 'Short' },
+                { value: 'medium', label: 'Medium' },
+                { value: 'long', label: 'Long' }
+              ].map(lengthOption => (
+                <button
+                  key={lengthOption.value}
+                  onClick={() => setStoryData(prev => ({ ...prev, length: lengthOption.value }))}
+                  style={{
+                    padding: '10px 20px',
+                    fontSize: '16px',
+                    border: '2px solid',
+                    borderColor: storyData.length === lengthOption.value ? '#ff758c' : '#ccc',
+                    borderRadius: '50px',
+                    cursor: 'pointer',
+                    background: storyData.length === lengthOption.value ? '#fff0f0' : 'white',
+                    color: '#333',
+                    fontWeight: 'bold',
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  {lengthOption.label}
+                </button>
+              ))}
+            </div>
           </div>
           
           <button 
@@ -332,7 +365,8 @@ const StoryMaker: React.FC = () => {
               fontSize: '18px',
               fontWeight: 'bold',
               boxShadow: '0 4px 8px rgba(255, 117, 140, 0.3)',
-              transition: 'all 0.3s ease'
+              transition: 'all 0.3s ease',
+              marginTop: '20px'
             }}
           >
             🎩 Make My Story!
