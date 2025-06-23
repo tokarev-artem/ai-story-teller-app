@@ -364,7 +364,7 @@ const StoryMaker: React.FC = () => {
                 onChange={handleInputChange} 
                 placeholder="John"
                 style={{
-                  width: '100%',
+                  width: '90%',
                   padding: '10px',
                   fontSize: '18px',
                   border: '1px solid #ccc',
@@ -381,7 +381,7 @@ const StoryMaker: React.FC = () => {
                 onChange={handleInputChange} 
                 placeholder="5"
                 style={{
-                  width: '100%',
+                  width: '90%',
                   padding: '10px',
                   fontSize: '18px',
                   border: '1px solid #ccc',
