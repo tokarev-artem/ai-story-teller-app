@@ -22,6 +22,11 @@ The Story Teller App is a React-based application designed to create and share b
 
 ![Architecture diagram](img/diagram.png)
 
+## Lambda functions are being used to:
+- Invoke Bedrock claude model to generate text
+- Invoke Bedrock tital model to generate image based on generated text by Claude model and put to s3 bucket
+- Invoke AWS Polly to generate audio story based on generated text by Claude model and put to s3 bucket
+
 ## Setup Instructions
 
 ### Prerequisites
